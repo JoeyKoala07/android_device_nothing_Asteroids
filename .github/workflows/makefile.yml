@@ -1,4 +1,4 @@
-name: Makefile CI
+name: Device tree checks
 
 on:
   push:
@@ -7,21 +7,27 @@ on:
     branches: [ "Asteroids-user-14-UKQ1.241011.001-2507171803-release-keys" ]
 
 jobs:
-  build:
-
+  lint:
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: configure
-      run: ./configure
+    - name: Install shellcheck
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y shellcheck
 
-    - name: Install dependencies
-      run: make
-
-    - name: Run check
-      run: make check
-
-    - name: Run distcheck
-      run: make distcheck
+    - name: Validate shell scripts
+      run: |
+        set -euo pipefail
+        scripts=(extract-files.sh setup-makefiles.sh vendorsetup.sh)
+        for script in "${scripts[@]}"; do
+          if [[ -f "$script" ]]; then
+            echo "Checking $script"
+            bash -n "$script"
+            shellcheck -x "$script"
+          else
+            echo "Skipping missing $script"
+          fi
+        done
