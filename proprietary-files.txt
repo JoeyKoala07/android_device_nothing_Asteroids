@@ -1,0 +1,11 @@
+# Proprietary files list (template)
+# Place the paths (relative to device/ or system root) of vendor blobs you
+# want to extract. Remove the examples and replace with the real blobs from
+# the device or stock ROM. Lines starting with '#' are comments.
+#
+# Examples:
+# vendor/lib64/libvendor.so
+# product/lib64/libexample.so
+# system_ext/lib64/libexample2.so
+
+# Add your device-specific blobs below this line
