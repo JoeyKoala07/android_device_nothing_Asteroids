@@ -1,5 +1,5 @@
 #!/bin/true
-# This file was replaced with a stub. The real device makefile is at:
+# This file is a stub. The real device makefile is:
 #   device/nothing/Asteroids/device.mk
-# Keep this stub so older tree scripts that reference the repo root still work.
+# Kept only so older scripts that expect ./device.mk don’t break.
 # SPDX-License-Identifier: Apache-2.0
