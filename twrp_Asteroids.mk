@@ -18,8 +18,8 @@ $(call inherit-product, device/nothing/Asteroids/device.mk)
 PRODUCT_DEVICE := Asteroids
 PRODUCT_NAME := twrp_Asteroids
 PRODUCT_BRAND := Nothing
-PRODUCT_MODEL := A059
-PRODUCT_MANUFACTURER := nothing
+PRODUCT_MODEL := Nothing Phone (3a)
+PRODUCT_MANUFACTURER := Nothing
 
 PRODUCT_GMS_CLIENTID_BASE := android-nothing
 
