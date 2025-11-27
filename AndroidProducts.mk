@@ -4,10 +4,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-
 PRODUCT_MAKEFILES := \
     $(LOCAL_DIR)/twrp_Asteroids.mk
 
 COMMON_LUNCH_CHOICES := \
-    twrp_Asteroids-eng \
-    twrp_Asteroids-userdebug
+    twrp_Asteroids-eng
