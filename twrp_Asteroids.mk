@@ -12,8 +12,8 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit.mk)
 # Inherit from Asteroids device
 $(call inherit-product, device/nothing/Asteroids/device.mk)
 
-PRODUCT_DEVICE := Asteroids
 PRODUCT_NAME := twrp_Asteroids
+PRODUCT_DEVICE := Asteroids
 PRODUCT_BRAND := Nothing
 PRODUCT_MODEL := Nothing Phone (3a)
 PRODUCT_MANUFACTURER := Nothing
