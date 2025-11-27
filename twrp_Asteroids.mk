@@ -9,8 +9,8 @@
 $(call inherit-product, $(SRC_TARGET_DIR)/product/full_base_telephony.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit.mk)
 
-# Inherit some common Omni stuff.
-$(call inherit-product, vendor/omni/config/common.mk)
+# Inherit OrangeFox / recovery common config
+$(call inherit-product, vendor/recovery/config/common.mk)
 
 # Inherit from Asteroids device
 $(call inherit-product, device/nothing/Asteroids/device.mk)
@@ -27,3 +27,4 @@ PRODUCT_BUILD_PROP_OVERRIDES += \
     PRIVATE_BUILD_DESC="Asteroids-user 14 UKQ1.241011.001 2507171803 release-keys"
 
 BUILD_FINGERPRINT := Nothing/Asteroids/Asteroids:14/UKQ1.241011.001/2507171803:user/release-keys
+
