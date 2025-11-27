@@ -78,7 +78,8 @@ TARGET_BOARD_PLATFORM := volcano
 
 # Recovery display / fstab
 TARGET_RECOVERY_PIXEL_FORMAT := BGRA_8888
-TARGET_RECOVERY_FSTAB        := recovery.fstab
+# Recovery fstab
+TARGET_RECOVERY_FSTAB := device/nothing/Asteroids/recovery.fstab
 TARGET_USERIMAGES_USE_EXT4   := true
 TARGET_USERIMAGES_USE_F2FS   := true
 
