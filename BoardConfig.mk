@@ -41,9 +41,9 @@ BOARD_KERNEL_IMAGE_NAME        := Image
 TARGET_KERNEL_CONFIG := Asteroids_defconfig
 TARGET_KERNEL_SOURCE := kernel/nothing/Asteroids
 
-# Prebuilt kernel (what OrangeFox actually uses)
-TARGET_FORCE_PREBUILT_KERNEL := true
-TARGET_PREBUILT_KERNEL       := $(DEVICE_PATH)/prebuilt/kernel
+# Do NOT force a prebuilt kernel – let the build use its own GKI/generic kernel
+TARGET_FORCE_PREBUILT_KERNEL := false
+# TARGET_PREBUILT_KERNEL       := $(DEVICE_PATH)/prebuilt/kernel
 
 # mkbootimg arguments
 BOARD_MKBOOTIMG_ARGS      += --header_version $(BOARD_BOOT_HEADER_VERSION)
