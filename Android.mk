@@ -2,9 +2,5 @@
 
 LOCAL_PATH := $(call my-dir)
 
-ifneq ($(filter twrp_Asteroids,$(TARGET_DEVICE)),)
-
-# Include all Android.mk files under this device directory
-include $(call all-makefiles-under,$(LOCAL_PATH))
-
-endif
+# Nothing fancy needed here for OrangeFox; the device config
+# lives in device.mk and BoardConfig.mk.
