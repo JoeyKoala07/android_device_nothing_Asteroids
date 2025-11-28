@@ -102,10 +102,10 @@ TW_INPUT_BLACKLIST    := "hbtp_vm"
 TW_USE_TOOLBOX        := true
 TW_INCLUDE_REPACKTOOLS := true
 
-# Backlight / brightness (OrangeFox demands TW_MAX_BRIGHTNESS)
-# These values are typical for modern panels; we can tune later.
+# Recovery brightness
 TW_BRIGHTNESS_PATH    := "/sys/class/backlight/panel0-backlight/brightness"
-TW_MAX_BRIGHTNESS     := 2047
-TW_DEFAULT_BRIGHTNESS := 1024
+TW_MAX_BRIGHTNESS     := 4409
+TW_DEFAULT_BRIGHTNESS := 2200  # roughly half; safe default
+
 
 
