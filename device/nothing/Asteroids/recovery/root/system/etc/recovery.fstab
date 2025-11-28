@@ -1,2 +1,37 @@
-# Nothing Phone 3a (Asteroids) - minimal recovery.fstab
-/dev/block/by-name/persist  /persist  ext4  nosuid,nodev,barrier=1  wait,check,formattable
+# =========================
+# Recovery FSTAB — Asteroids (Nothing A059)
+# Dynamic partitions, A/B device
+# Columns: <device> <mount_point> <fs_type> <mnt_flags> <fs_mgr_flags>
+# =========================
+
+# ---------- Dynamic (logical) partitions ----------
+/dev/block/mapper/system         /system        ext4    ro,barrier=1                         wait,logical,first_stage_mount
+/dev/block/mapper/product        /product       ext4    ro,barrier=1                         wait,logical,first_stage_mount
+/dev/block/mapper/vendor         /vendor        ext4    ro,barrier=1                         wait,logical,first_stage_mount
+/dev/block/mapper/odm            /odm           ext4    ro,barrier=1                         wait,logical,first_stage_mount
+/dev/block/mapper/system_ext     /system_ext    ext4    ro,barrier=1                         wait,logical,first_stage_mount
+/dev/block/mapper/vendor_dlkm    /vendor_dlkm   ext4    ro,barrier=1                         wait,logical,first_stage_mount
+/dev/block/mapper/odm_dlkm       /odm_dlkm      ext4    ro,barrier=1                         wait,logical,first_stage_mount
+
+# ---------- Metadata & userdata ----------
+/dev/block/by-name/metadata      /metadata      ext4    nodev,nosuid,discard                 wait,first_stage_mount,formattable,check
+# If /data is ext4 on your unit, change f2fs->ext4 and drop the f2fs-only options below.
+/dev/block/by-name/userdata      /data          f2fs    noatime,nosuid,nodev,discard,fsync_mode=nobarrier,reserve_root=32768   wait,check,quota,latemount,formattable,resize
+
+# ---------- Boot-related ----------
+/dev/block/by-name/boot          /boot          emmc    defaults                             wait,slotselect
+/dev/block/by-name/vendor_boot   /vendor_boot   emmc    defaults                             wait,slotselect
+/dev/block/by-name/init_boot     /init_boot     emmc    defaults                             wait,slotselect
+/dev/block/by-name/dtbo          /dtbo          emmc    defaults                             wait
+/dev/block/by-name/misc          /misc          emmc    defaults                             wait
+/dev/block/by-name/super         /super         emmc    defaults                             wait,slotselect
+
+# ---------- Removable storage ----------
+/dev/block/sda1                  /usb-otg       vfat    defaults                             voldmanaged=usb-otg:auto
+# /dev/block/mmcblk1p1           /external_sd   vfat    defaults                             voldmanaged=external_sd:auto
+
+# ---------- Cache/tmp ----------
+tmpfs                             /cache        tmpfs   mode=0770,uid=1000,gid=1000          rw
+
+# ---------- Firmware ----------
+/dev/block/bootdevice/by-name/firmware  /firmware  vfat  ro,uid=0,gid=0,fmask=0022,dmask=0022  wait
