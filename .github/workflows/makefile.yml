@@ -5,29 +5,126 @@ on:
     branches: [ "Asteroids-user-14-UKQ1.241011.001-2507171803-release-keys" ]
   pull_request:
     branches: [ "Asteroids-user-14-UKQ1.241011.001-2507171803-release-keys" ]
+  workflow_dispatch:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Install shellcheck
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y shellcheck
+      - name: Install linters
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck shfmt yamllint dos2unix
 
-    - name: Validate shell scripts
-      run: |
-        set -euo pipefail
-        scripts=(extract-files.sh setup-makefiles.sh vendorsetup.sh)
-        for script in "${scripts[@]}"; do
-          if [[ -f "$script" ]]; then
-            echo "Checking $script"
-            bash -n "$script"
-            shellcheck -x "$script"
-          else
-            echo "Skipping missing $script"
+      - name: Validate YAML in repo (basic)
+        run: |
+          # Skip giant vendor trees if present; focus on this repo
+          yamllint -s . || (echo "::error title=YAML lint failed::Fix YAML warnings/errors"; exit 1)
+
+      - name: Find candidate shell scripts
+        id: list_scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t SCRIPTS < <(git ls-files | grep -E '\.sh$|/vendorsetup\.sh$|/extract-files$' || true)
+          if ((${#SCRIPTS[@]}==0)); then
+            echo "scripts=" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
-        done
+          printf '%s\n' "${SCRIPTS[@]}"
+          {
+            printf 'scripts<<EOF\n'
+            printf '%s\n' "${SCRIPTS[@]}"
+            printf 'EOF\n'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: CRLF guard (no Windows line endings)
+        if: steps.list_scripts.outputs.scripts != ''
+        run: |
+          bad=0
+          while read -r f; do
+            if file "$f" | grep -q 'CRLF'; then
+              echo "::error file=$f,title=CRLF detected::Convert to LF (run: dos2unix $f)"
+              bad=1
+            fi
+          done <<< "${{ steps.list_scripts.outputs.scripts }}"
+          exit $bad
+
+      - name: Bash syntax check
+        if: steps.list_scripts.outputs.scripts != ''
+        run: |
+          fail=0
+          while read -r f; do
+            echo "bash -n $f"
+            if ! bash -n "$f"; then fail=1; fi
+          done <<< "${{ steps.list_scripts.outputs.scripts }}"
+          exit $fail
+
+      - name: shellcheck (static analysis)
+        if: steps.list_scripts.outputs.scripts != ''
+        run: |
+          # -x to follow sourced files; ignore SC1091 for Android env files if noisy
+          shellcheck -x ${{ steps.list_scripts.outputs.scripts }}
+
+      - name: shfmt (format check)
+        if: steps.list_scripts.outputs.scripts != ''
+        run: |
+          # Enforce POSIX/Bash style; print diff if formatting would change
+          if ! shfmt -l -d ${{ steps.list_scripts.outputs.scripts }}; then
+            echo "::error title=shfmt formatting drift::Run: shfmt -w <files>"
+            exit 1
+          fi
+
+      # -------- Device-tree specific checks that catch your CI failure --------
+
+      - name: Verify recovery.fstab exists in-tree
+        run: |
+          FSTAB="device/nothing/Asteroids/recovery/root/system/etc/recovery.fstab"
+          if [[ ! -f "$FSTAB" ]]; then
+            echo "::error file=$FSTAB,title=recovery.fstab missing::Add a real recovery.fstab file at this path."
+            exit 1
+          fi
+
+      - name: Validate TARGET_RECOVERY_FSTAB in BoardConfig.mk
+        run: |
+          BC="device/nothing/Asteroids/BoardConfig.mk"
+          if [[ ! -f "$BC" ]]; then
+            echo "::error file=$BC,title=BoardConfig.mk missing::Expected BoardConfig.mk"
+            exit 1
+          fi
+          want='TARGET_RECOVERY_FSTAB := $(DEVICE_PATH)/recovery/root/system/etc/recovery.fstab'
+          if ! grep -qF "$want" "$BC"; then
+            echo "::error file=$BC,title=TARGET_RECOVERY_FSTAB not set correctly::Expected: $want"
+            echo "---- BoardConfig.mk ----"; sed -n '1,200p' "$BC"
+            exit 1
+          fi
+
+      - name: Ensure no conflicting PRODUCT_COPY_FILES for recovery.fstab
+        run: |
+          # Using both TARGET_RECOVERY_FSTAB and PRODUCT_COPY_FILES for the same file causes PHONY/dup issues.
+          if git grep -nE 'PRODUCT_COPY_FILES\s*\+=.*recovery\.fstab' -- device/nothing/Asteroids | grep -v '^\s*#' ; then
+            echo "::error title=Conflicting copy rule::Remove PRODUCT_COPY_FILES for recovery.fstab; rely on TARGET_RECOVERY_FSTAB only."
+            exit 1
+          fi
+
+      - name: Quick sanity: required device files exist
+        run: |
+          for f in \
+            device/nothing/Asteroids/BoardConfig.mk \
+            device/nothing/Asteroids/AndroidProducts.mk \
+            device/nothing/Asteroids/device.mk \
+            device/nothing/Asteroids/Android.mk
+          do
+            [[ -f "$f" ]] || { echo "::error file=$f,title=Missing file::Create this file"; exit 1; }
+          done
+
+      - name: Show summary
+        run: |
+          echo "✅ Device tree checks passed."
