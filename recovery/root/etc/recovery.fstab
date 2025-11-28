@@ -1,16 +1,46 @@
-# ---- First-stage dynamic partitions ----
-/system     ext4  /dev/block/mapper/system     ro,barrier=1                               wait,logical,first_stage_mount
-/product    ext4  /dev/block/mapper/product    ro,barrier=1                               wait,logical,first_stage_mount
-/vendor     ext4  /dev/block/mapper/vendor     ro,barrier=1                               wait,logical,first_stage_mount
-/odm        ext4  /dev/block/mapper/odm        ro,barrier=1                               wait,logical,first_stage_mount
+# =========================
+# Recovery FSTAB — Asteroids (Nothing A059)
+# Dynamic partitions, A/B device
+# =========================
+# Notes:
+# - first_stage_mount: mounts happen in init's first stage (required for logical/dynamic partitions)
+# - logical: partition lives inside super via dm-linear
+# - slotselect: use current slot suffix (_a/_b) where applicable
+# - userdata is typically f2fs on modern Qualcomm; ext4 also works if device uses it
+# - Tune flags later once we confirm exact filesystems from /proc/mounts in recovery
 
-# ---- Metadata & userdata ----
-/metadata   ext4  /dev/block/by-name/metadata  nodev,nosuid,discard                       wait,first_stage_mount,formattable,check
-/data       f2fs  /dev/block/by-name/userdata  noatime,nosuid,nodev,discard,fsync_mode=nobarrier,reserve_root=32768  wait,check,quota,latemount,formattable,resize
+# ---------- Dynamic (logical) partitions ----------
+/system      ext4   /dev/block/mapper/system        ro,barrier=1                         wait,logical,first_stage_mount
+/product     ext4   /dev/block/mapper/product       ro,barrier=1                         wait,logical,first_stage_mount
+/vendor      ext4   /dev/block/mapper/vendor        ro,barrier=1                         wait,logical,first_stage_mount
+/odm         ext4   /dev/block/mapper/odm           ro,barrier=1                         wait,logical,first_stage_mount
+# Add others your build actually uses (system_ext, vendor_dlkm, odm_dlkm) if present:
+/system_ext  ext4   /dev/block/mapper/system_ext     ro,barrier=1                        wait,logical,first_stage_mount
+/vendor_dlkm ext4   /dev/block/mapper/vendor_dlkm    ro,barrier=1                        wait,logical,first_stage_mount
+/odm_dlkm    ext4   /dev/block/mapper/odm_dlkm       ro,barrier=1                        wait,logical,first_stage_mount
 
-# ---- Boot-related (useful in recovery) ----
-/boot          emmc  /dev/block/by-name/boot
-/vendor_boot   emmc  /dev/block/by-name/vendor_boot
-/dtbo          emmc  /dev/block/by-name/dtbo
-/misc          emmc  /dev/block/by-name/misc
-/super         emmc  /dev/block/by-name/super                                            slotselect
+# ---------- Metadata & userdata ----------
+/metadata    ext4   /dev/block/by-name/metadata      nodev,nosuid,discard                wait,first_stage_mount,formattable,check
+# If your device uses f2fs for userdata (most do). Switch to ext4 if needed after verification.
+/data        f2fs   /dev/block/by-name/userdata      noatime,nosuid,nodev,discard,fsync_mode=nobarrier,reserve_root=32768 \
+                                                                                         wait,check,quota,latemount,formattable,resize
+
+# ---------- Boot-related (handy for backup/flash ops from recovery) ----------
+/boot        emmc   /dev/block/by-name/boot          defaults                            wait,slotselect
+# If device truly does not use vendor_boot for recovery, keep it listed for tooling but it’s optional to mount.
+/vendor_boot emmc   /dev/block/by-name/vendor_boot    defaults                            wait,slotselect
+/init_boot   emmc   /dev/block/by-name/init_boot      defaults                            wait,slotselect
+/dtbo        emmc   /dev/block/by-name/dtbo           defaults                            wait
+/misc        emmc   /dev/block/by-name/misc           defaults                            wait
+/super       emmc   /dev/block/by-name/super          defaults                            wait,slotselect
+
+# ---------- Removable storage (optional but useful) ----------
+/usb-otg     vfat   /dev/block/sda1                   defaults                            voldmanaged=usb-otg:auto
+# If your external SD shows as mmcblk1p1, uncomment the next line and adjust
+# /external_sd  vfat  /dev/block/mmcblk1p1            defaults                            voldmanaged=external_sd:auto
+
+# ---------- Cache/tmp (logical tmpfs, no real partition) ----------
+/cache       tmpfs  /cache                            mode=0770,uid=1000,gid=1000        rw
+
+# ---------- Firmware partitions (read-only; useful for diagnostics) ----------
+/firmware    vfat   /dev/block/bootdevice/by-name/firmware    ro,uid=0,gid=0,fmask=0022,dmask=0022  wait
