@@ -12,6 +12,9 @@ PRODUCT_BUILD_PROP_OVERRIDES += \
 
 BUILD_FINGERPRINT := Nothing/Asteroids/Asteroids:15/AQ3A.241015.001/2509241736:user/release-keys
 
+# Inherit common 64-bit telephony configuration
 $(call inherit-product, build/target/product/embedded.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit.mk)
+
+# Inherit device-specific configuration
 $(call inherit-product, device/nothing/Asteroids/device.mk)
