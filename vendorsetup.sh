@@ -1,11 +1,4 @@
-#
-# Vendor setup for Nothing Phone 3a (Asteroids)
-#
+# vendorsetup.sh for Nothing Phone 3a (Asteroids)
+# Not strictly needed when COMMON_LUNCH_CHOICES is defined.
 
-add_lunch_combo omni_Asteroids-eng
-add_lunch_combo omni_Asteroids-userdebug
-add_lunch_combo omni_Asteroids-user
-
-add_lunch_combo twrp_Asteroids-eng
-add_lunch_combo twrp_Asteroids-userdebug
-add_lunch_combo twrp_Asteroids-user
+return 0
