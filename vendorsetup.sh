@@ -1,4 +1,3 @@
 # vendorsetup.sh for Nothing Phone 3a (Asteroids)
-# Not strictly needed when COMMON_LUNCH_CHOICES is defined.
-
+# COMMON_LUNCH_CHOICES in AndroidProducts.mk is used instead.
 return 0
