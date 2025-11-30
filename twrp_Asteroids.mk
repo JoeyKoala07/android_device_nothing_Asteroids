@@ -1,4 +1,4 @@
-# TWRP / OrangeFox product definition for Nothing Phone 3a (Asteroids)
+# TWRP/OrangeFox product makefile for Nothing Phone 3a (Asteroids)
 
 PRODUCT_RELEASE_NAME := Asteroids
 PRODUCT_DEVICE       := Asteroids
@@ -7,15 +7,9 @@ PRODUCT_BRAND        := Nothing
 PRODUCT_MODEL        := Nothing Phone 3a
 PRODUCT_MANUFACTURER := Nothing
 
-# Match stock build description / fingerprint for 3.2-250924-1736
-PRODUCT_BUILD_PROP_OVERRIDES += \
-    PRIVATE_BUILD_DESC="Asteroids-user 15 AQ3A.241015.001 2509241736 release-keys"
-
-BUILD_FINGERPRINT := Nothing/Asteroids/Asteroids:15/AQ3A.241015.001/2509241736:user/release-keys
-
-# Inherit common 64-bit / embedded config
-$(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit.mk)
+# Use the common embedded/64-bit configuration
 $(call inherit-product, build/target/product/embedded.mk)
+$(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit.mk)
 
-# Inherit device-specific configuration
+# Device-specific configuration
 $(call inherit-product, device/nothing/Asteroids/device.mk)
