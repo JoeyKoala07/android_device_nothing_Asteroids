@@ -16,3 +16,4 @@ PRODUCT_MANUFACTURER := Nothing
 
 # Optional – same comment as omni_Asteroids.mk
 BUILD_FINGERPRINT := Nothing/Asteroids/Asteroids:15/AQ3A.241015.001/2509241736:user/release-keys
+PRIVATE_BUILD_DESC := "Asteroids-user 15 AQ3A.241015.001 2509241736 release-keys"
