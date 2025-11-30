@@ -17,3 +17,4 @@ PRODUCT_MANUFACTURER := Nothing
 # Optional: if you want an explicit fingerprint, paste the EXACT A15 value here:
 # (output of:  getprop ro.build.fingerprint  on the phone)
 BUILD_FINGERPRINT := Nothing/Asteroids/Asteroids:15/AQ3A.241015.001/2509241736:user/release-keys
+PRIVATE_BUILD_DESC := "Asteroids-user 15 AQ3A.241015.001 2509241736 release-keys"
