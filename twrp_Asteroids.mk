@@ -14,6 +14,9 @@ BUILD_FINGERPRINT := Nothing/Asteroids/Asteroids:15/AQ3A.241015.001/2509241736:u
 
 PRODUCT_GMS_CLIENTID_BASE := android-nothing
 
+# Inherit common 64-bit telephony configuration
 $(call inherit-product, $(SRC_TARGET_DIR)/product/full_base.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit.mk)
+
+# Inherit device-specific configuration
 $(call inherit-product, device/nothing/Asteroids/device.mk)
