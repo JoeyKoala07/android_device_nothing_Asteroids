@@ -1,7 +1,8 @@
-# TWRP product definition for Nothing Phone 3a (Asteroids)
+# TWRP / OrangeFox product definition for Nothing Phone 3a (Asteroids)
 
-PRODUCT_NAME         := twrp_Asteroids
+PRODUCT_RELEASE_NAME := Asteroids
 PRODUCT_DEVICE       := Asteroids
+PRODUCT_NAME         := twrp_Asteroids
 PRODUCT_BRAND        := Nothing
 PRODUCT_MODEL        := Nothing Phone 3a
 PRODUCT_MANUFACTURER := Nothing
