@@ -7,13 +7,13 @@ PRODUCT_BRAND        := Nothing
 PRODUCT_MODEL        := Nothing Phone 3a
 PRODUCT_MANUFACTURER := Nothing
 
-# Match your stock build description / fingerprint
+# Match stock build description / fingerprint for 3.2-250924-1736
 PRODUCT_BUILD_PROP_OVERRIDES += \
     PRIVATE_BUILD_DESC="Asteroids-user 15 AQ3A.241015.001 2509241736 release-keys"
 
 BUILD_FINGERPRINT := Nothing/Asteroids/Asteroids:15/AQ3A.241015.001/2509241736:user/release-keys
 
-# Inherit common config
+# Inherit common 64-bit / embedded config
 $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit.mk)
 $(call inherit-product, build/target/product/embedded.mk)
 
