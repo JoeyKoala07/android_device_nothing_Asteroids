@@ -1,5 +1,10 @@
-#!/bin/true
-# This file was replaced with a stub. The real device makefile is at:
-#   device/nothing/Asteroids/device.mk
-# Keep this stub so older tree scripts that reference the repo root still work.
-# SPDX-License-Identifier: Apache-2.0
+LOCAL_PATH := $(call my-dir)
+
+PRODUCT_COPY_FILES += \
+    $(LOCAL_PATH)/prebuilt/dtb.img:dtb.img
+
+PRODUCT_PACKAGES += \
+    fastbootd
+
+PRODUCT_PROPERTY_OVERRIDES += \
+    ro.boot.dynamic_partitions=true
