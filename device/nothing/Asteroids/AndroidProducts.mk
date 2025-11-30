@@ -4,12 +4,10 @@
 
 LOCAL_PATH := $(call my-dir)
 
-# List product makefiles for this device
 PRODUCT_MAKEFILES := \
     $(LOCAL_PATH)/omni_Asteroids.mk \
     $(LOCAL_PATH)/twrp_Asteroids.mk
 
-# Modern lunch targets (used instead of add_lunch_combo)
 COMMON_LUNCH_CHOICES := \
     omni_Asteroids-eng \
     omni_Asteroids-userdebug \
