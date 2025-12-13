@@ -1,4 +1,51 @@
-android_device_nothing_Asteroids/
-└── .github/
-    └── workflows/
-        └── sanity.yml
+name: Device Tree Sanity
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  sanity:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Basic required files
+        shell: bash
+        run: |
+          set -euo pipefail
+          req=(AndroidProducts.mk BoardConfig.mk device.mk Android.mk)
+          for f in "${req[@]}"; do
+            [[ -f "$f" ]] || { echo "::error file=$f::Missing required file"; exit 1; }
+          done
+
+      - name: Product wiring must exist (twrp_* expected)
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -R --line-number "PRODUCT_MAKEFILES" AndroidProducts.mk
+          grep -R --line-number "twrp_Asteroids" . || {
+            echo "::error::Expected a twrp_Asteroids product (OrangeFox/TWRP-style)."; exit 1; }
+
+      - name: Check recovery fstab path (common failure)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f "recovery/root/system/etc/recovery.fstab" ]] && [[ ! -f "recovery.fstab" ]]; then
+            echo "::warning::No recovery.fstab found at common paths. This often breaks recovery builds."
+          fi
+
+      - name: CRLF guard (no Windows line endings)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bad=0
+          while IFS= read -r f; do
+            if file "$f" | grep -q 'CRLF'; then
+              echo "::error file=$f::CRLF line endings detected. Convert to LF."; bad=1
+            fi
+          done < <(git ls-files | grep -E 'vendorsetup\.sh$|\.sh$' || true)
+          exit $bad
