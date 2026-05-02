@@ -1,0 +1,164 @@
+name: Device tree checks
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install linters
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck shfmt yamllint dos2unix file
+
+      - name: Validate YAML in repo
+        shell: bash
+        run: |
+          yamllint -s . || {
+            echo "::error title=YAML lint failed::Fix YAML warnings/errors"
+            exit 1
+          }
+
+      - name: Find candidate shell scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git ls-files | grep -E '\.sh$|/vendorsetup\.sh$|/extract-files$|/setup-makefiles\.sh$' > /tmp/scripts.txt || true
+
+          if [[ ! -s /tmp/scripts.txt ]]; then
+            echo "No shell scripts found."
+          else
+            echo "Found shell scripts:"
+            cat /tmp/scripts.txt
+          fi
+
+      - name: CRLF guard
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! -s /tmp/scripts.txt ]]; then
+            echo "No shell scripts to check."
+            exit 0
+          fi
+
+          bad=0
+
+          while IFS= read -r f; do
+            if file "$f" | grep -q 'CRLF'; then
+              echo "::error file=$f,title=CRLF detected::Convert to LF with: dos2unix $f"
+              bad=1
+            fi
+          done < /tmp/scripts.txt
+
+          exit "$bad"
+
+      - name: Bash syntax check
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! -s /tmp/scripts.txt ]]; then
+            echo "No shell scripts to check."
+            exit 0
+          fi
+
+          fail=0
+
+          while IFS= read -r f; do
+            echo "bash -n $f"
+            if ! bash -n "$f"; then
+              fail=1
+            fi
+          done < /tmp/scripts.txt
+
+          exit "$fail"
+
+      - name: shellcheck
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! -s /tmp/scripts.txt ]]; then
+            echo "No shell scripts to check."
+            exit 0
+          fi
+
+          fail=0
+
+          while IFS= read -r f; do
+            echo "shellcheck -x $f"
+            if ! shellcheck -x "$f"; then
+              fail=1
+            fi
+          done < /tmp/scripts.txt
+
+          exit "$fail"
+
+      - name: shfmt format check
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! -s /tmp/scripts.txt ]]; then
+            echo "No shell scripts to check."
+            exit 0
+          fi
+
+          fail=0
+
+          while IFS= read -r f; do
+            echo "shfmt -l -d $f"
+            if ! shfmt -l -d "$f"; then
+              fail=1
+            fi
+          done < /tmp/scripts.txt
+
+          if ((fail != 0)); then
+            echo "::error title=shfmt formatting drift::Run: shfmt -w <file>"
+          fi
+
+          exit "$fail"
+
+      - name: Verify recovery.fstab exists in-tree
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          FSTAB="recovery/root/system/etc/recovery.fstab"
+
+          if [[ ! -f "$FSTAB" ]]; then
+            echo "::error file=$FSTAB,title=recovery.fstab missing::Add a real recovery.fstab file at this path."
+            exit 1
+          fi
+
+      - name: Quick sanity required files exist
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for f in BoardConfig.mk AndroidProducts.mk device.mk Android.mk; do
+            if [[ ! -f "$f" ]]; then
+              echo "::error file=$f,title=Missing file::Create this file"
+              exit 1
+            fi
+          done
+
+      - name: Show summary
+        shell: bash
+        run: |
+          echo "Device tree checks passed."
