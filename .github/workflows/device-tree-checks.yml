@@ -22,7 +22,7 @@ jobs:
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y shellcheck shfmt yamllint dos2unix file
+          sudo apt-get install -y shellcheck shfmt yamllint dos2unix file grep sed gawk
 
       - name: Validate YAML in repo
         shell: bash
@@ -134,29 +134,195 @@ jobs:
 
           exit "$fail"
 
-      - name: Verify recovery.fstab exists in-tree
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          FSTAB="recovery/root/system/etc/recovery.fstab"
-
-          if [[ ! -f "$FSTAB" ]]; then
-            echo "::error file=$FSTAB,title=recovery.fstab missing::Add a real recovery.fstab file at this path."
-            exit 1
-          fi
-
       - name: Quick sanity required files exist
         shell: bash
         run: |
           set -euo pipefail
 
-          for f in BoardConfig.mk AndroidProducts.mk device.mk Android.mk; do
+          required_files=(
+            BoardConfig.mk
+            AndroidProducts.mk
+            device.mk
+            Android.mk
+            recovery/root/system/etc/recovery.fstab
+          )
+
+          for f in "${required_files[@]}"; do
             if [[ ! -f "$f" ]]; then
               echo "::error file=$f,title=Missing file::Create this file"
               exit 1
             fi
           done
+
+      - name: Validate BoardConfig variables
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          file="BoardConfig.mk"
+          fail=0
+
+          require_var() {
+            local name="$1"
+            if ! grep -Eq "^[[:space:]]*${name}[[:space:]]*(:=|=)" "$file"; then
+              echo "::error file=$file,title=Missing BoardConfig variable::${name} is required"
+              fail=1
+            fi
+          }
+
+          require_bool_if_present() {
+            local name="$1"
+            if grep -Eq "^[[:space:]]*${name}[[:space:]]*(:=|=)" "$file"; then
+              local value
+              value="$(grep -E "^[[:space:]]*${name}[[:space:]]*(:=|=)" "$file" | tail -n1 | sed -E 's/^[^:=]+(:=|=)[[:space:]]*//; s/[[:space:]]+#.*$//; s/[[:space:]]+$//')"
+              if [[ "$value" != "true" && "$value" != "false" ]]; then
+                echo "::error file=$file,title=Invalid boolean::${name} must be true or false, got: ${value}"
+                fail=1
+              fi
+            fi
+          }
+
+          require_var TARGET_ARCH
+          require_var TARGET_ARCH_VARIANT
+          require_var TARGET_CPU_ABI
+          require_var TARGET_BOARD_PLATFORM
+          require_var TARGET_OTA_ASSERT_DEVICE
+          require_var TARGET_RECOVERY_FSTAB
+
+          if ! grep -Eq '^[[:space:]]*TARGET_ARCH[[:space:]]*(:=|=)[[:space:]]*arm64([[:space:]]|$)' "$file"; then
+            echo "::error file=$file,title=Invalid TARGET_ARCH::Expected TARGET_ARCH := arm64"
+            fail=1
+          fi
+
+          if ! grep -Eq '^[[:space:]]*TARGET_RECOVERY_FSTAB[[:space:]]*(:=|=)[[:space:]]*recovery/root/system/etc/recovery\.fstab([[:space:]]|$)' "$file"; then
+            echo "::error file=$file,title=Invalid TARGET_RECOVERY_FSTAB::Expected recovery/root/system/etc/recovery.fstab"
+            fail=1
+          fi
+
+          require_bool_if_present BOARD_HAS_NO_SELECT_BUTTON
+          require_bool_if_present BOARD_USES_RECOVERY_AS_BOOT
+          require_bool_if_present TARGET_NO_RECOVERY
+          require_bool_if_present TARGET_USES_MKE2FS
+          require_bool_if_present TW_INCLUDE_CRYPTO
+          require_bool_if_present TW_INCLUDE_FBE
+          require_bool_if_present TW_USE_TOOLBOX
+          require_bool_if_present OF_USE_MAGISKBOOT
+          require_bool_if_present OF_USE_TWRP_SAR_DETECT
+
+          if grep -Eq '^[[:space:]]*TARGET_NO_RECOVERY[[:space:]]*(:=|=)[[:space:]]*true([[:space:]]|$)' "$file"; then
+            echo "::error file=$file,title=Recovery disabled::TARGET_NO_RECOVERY must not be true for a recovery tree"
+            fail=1
+          fi
+
+          exit "$fail"
+
+      - name: Validate recovery.fstab entries
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          fstab="recovery/root/system/etc/recovery.fstab"
+          fail=0
+
+          if [[ ! -s "$fstab" ]]; then
+            echo "::error file=$fstab,title=Empty fstab::recovery.fstab exists but is empty"
+            exit 1
+          fi
+
+          require_mount() {
+            local mount="$1"
+            if ! awk -v m="$mount" 'NF >= 3 && $1 !~ /^#/ && $2 == m { found=1 } END { exit found ? 0 : 1 }' "$fstab"; then
+              echo "::error file=$fstab,title=Missing fstab mount::Missing mount point ${mount}"
+              fail=1
+            fi
+          }
+
+          require_by_name() {
+            local mount="$1"
+            if ! awk -v m="$mount" 'NF >= 3 && $1 !~ /^#/ && $2 == m && $1 ~ /\/by-name\// { found=1 } END { exit found ? 0 : 1 }' "$fstab"; then
+              echo "::error file=$fstab,title=Suspicious fstab block path::${mount} should normally use /dev/block/.../by-name/..."
+              fail=1
+            fi
+          }
+
+          while IFS= read -r line; do
+            [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+            fields=$(awk '{print NF}' <<< "$line")
+            if (( fields < 3 )); then
+              echo "::error file=$fstab,title=Malformed fstab line::Each non-comment entry needs at least block path, mount point, and filesystem: $line"
+              fail=1
+            fi
+          done < "$fstab"
+
+          require_mount /system
+          require_mount /vendor
+          require_mount /data
+          require_by_name /system
+          require_by_name /vendor
+          require_by_name /data
+
+          if grep -Eq '(^|[[:space:]])encryptable=|(^|[[:space:]])fileencryption=|(^|[[:space:]])metadata_encryption=' "$fstab"; then
+            echo "Detected encryption-related fstab flags."
+          else
+            echo "::warning file=$fstab,title=No encryption flags detected::If the device uses FBE, add correct fileencryption/metadata encryption flags from stock fstab."
+          fi
+
+          exit "$fail"
+
+      - name: Check OrangeFox and TWRP flags
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          file="BoardConfig.mk"
+          fail=0
+
+          warn_missing() {
+            local name="$1"
+            if ! grep -Eq "^[[:space:]]*${name}[[:space:]]*(:=|=)" "$file"; then
+              echo "::warning file=$file,title=Recommended recovery flag missing::${name} is commonly needed for OrangeFox/TWRP device trees"
+            fi
+          }
+
+          warn_missing TW_THEME
+          warn_missing TW_SCREEN_BLANK_ON_BOOT
+          warn_missing TW_INCLUDE_CRYPTO
+          warn_missing TW_INCLUDE_FBE
+          warn_missing OF_MAINTAINER
+          warn_missing OF_USE_MAGISKBOOT
+          warn_missing OF_USE_TWRP_SAR_DETECT
+
+          if grep -Eq '^[[:space:]]*TW_INCLUDE_CRYPTO[[:space:]]*(:=|=)[[:space:]]*true([[:space:]]|$)' "$file" && \
+             ! grep -Eq '^[[:space:]]*TW_INCLUDE_FBE[[:space:]]*(:=|=)[[:space:]]*true([[:space:]]|$)' "$file"; then
+            echo "::warning file=$file,title=Crypto without FBE::Modern Android devices usually need TW_INCLUDE_FBE := true with TW_INCLUDE_CRYPTO := true"
+          fi
+
+          if grep -Eq '^[[:space:]]*BOARD_USES_RECOVERY_AS_BOOT[[:space:]]*(:=|=)[[:space:]]*true([[:space:]]|$)' "$file"; then
+            echo "Detected recovery-as-boot device layout."
+          else
+            echo "::warning file=$file,title=Recovery-as-boot not enabled::If this device has no dedicated recovery partition, set BOARD_USES_RECOVERY_AS_BOOT := true"
+          fi
+
+          exit "$fail"
+
+      - name: Check for stock firmware inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          found=0
+
+          for p in vendor_boot.img boot.img init_boot.img vendor/etc/fstab.* vendor_boot_ramdisk/fstab.* ramdisk/fstab.* stock_firmware payload.bin; do
+            if compgen -G "$p" > /dev/null; then
+              found=1
+            fi
+          done
+
+          if (( found == 0 )); then
+            echo "::warning title=Stock firmware not found::Cannot auto-generate a true stock recovery.fstab until stock firmware, extracted ramdisk fstab, or payload contents are committed/uploaded."
+          else
+            echo "Stock firmware or extracted fstab input detected. Validate recovery.fstab against those files manually or extend this workflow with extraction logic."
+          fi
 
       - name: Show summary
         shell: bash
